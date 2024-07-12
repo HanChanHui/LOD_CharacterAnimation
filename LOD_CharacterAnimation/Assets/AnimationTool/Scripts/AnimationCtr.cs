@@ -17,11 +17,12 @@ public class AnimationCtr : MonoBehaviour
     public string actionName;
     public float animSoft;
 
-    private Animator _anim;
+    public Animator _anim;
 
     public void Init()
     {
-        _anim = GetComponent<Animator>();
+        _anim = GetComponentInChildren<Animator>();
+        Debug.Log(_anim);
         if (_anim == null)
         {
             Debug.LogError("Animator component not found!");

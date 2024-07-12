@@ -114,14 +114,14 @@ public class AnimationCtrEditor : Editor
     private void PlayAnimationClip(AnimationClip clip)
     {
         AnimationMode.StartAnimationMode();
-        AnimationMode.SampleAnimationClip(_animCtr.gameObject, clip, 0f);
+        AnimationMode.SampleAnimationClip(_animCtr._anim.gameObject, clip, 0f);
 
         EditorApplication.update += () =>
         {
             if (AnimationMode.InAnimationMode())
             {
                 float time = (float)EditorApplication.timeSinceStartup % clip.length;
-                AnimationMode.SampleAnimationClip(_animCtr.gameObject, clip, time);
+                AnimationMode.SampleAnimationClip(_animCtr._anim.gameObject, clip, time);
             }
         };
     }
