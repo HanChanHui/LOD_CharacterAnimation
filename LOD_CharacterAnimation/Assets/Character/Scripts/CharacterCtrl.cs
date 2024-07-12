@@ -88,19 +88,32 @@ public class CharacterCtrl : MonoBehaviour
                 moveDirection = inputDirection * currentSpeed;
 
                 Vector3 localInputDirection = transform.InverseTransformDirection(moveDirection);
-                float maxMagnitude = isRunning ? 2f : 1f;
+                float maxMagnitude = isRunning ? 6f : 4f;
                 localInputDirection.x = Mathf.Clamp(localInputDirection.x, -maxMagnitude, maxMagnitude);
                 localInputDirection.z = Mathf.Clamp(localInputDirection.z, -maxMagnitude, maxMagnitude);
 
-                anim.SetFloat("x", localInputDirection.x, smoothBlend, Time.deltaTime);
-                anim.SetFloat("y", localInputDirection.z, smoothBlend, Time.deltaTime);
+                float targetX = localInputDirection.x;
+                float targetY = localInputDirection.z;
+
+                float currentX = anim.GetFloat("x");
+                float currentY = anim.GetFloat("y");
+
+                float newX = Mathf.Lerp(currentX, targetX, smoothBlend * Time.deltaTime);
+                float newY = Mathf.Lerp(currentY, targetY, smoothBlend * Time.deltaTime);
+
+                anim.SetFloat("x", newX);
+                anim.SetFloat("y", newY);
             }
             else
             {
                 // 멈추기
-                moveDirection = Vector3.zero;
-                anim.SetFloat("x", 0, stopSmoothBlend, Time.deltaTime);
-                anim.SetFloat("y", 0, stopSmoothBlend, Time.deltaTime);
+                float currentX = anim.GetFloat("x");
+                float currentY = anim.GetFloat("y");
+
+                float newX = Mathf.Lerp(currentX, 0, stopSmoothBlend * Time.deltaTime);
+                float newY = Mathf.Lerp(currentY, 0, stopSmoothBlend * Time.deltaTime);
+                anim.SetFloat("x", newX);
+                anim.SetFloat("y", newY);
             }
         }
 
