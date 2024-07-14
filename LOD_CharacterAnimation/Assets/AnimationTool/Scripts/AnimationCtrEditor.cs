@@ -13,6 +13,8 @@ public class AnimationCtrEditor : Editor
 
     public VisualElement buttonPanel;
 
+    public VisualElement etcPanel;
+
 
     public override VisualElement CreateInspectorGUI()
     {
@@ -28,73 +30,35 @@ public class AnimationCtrEditor : Editor
         _animCtr.Init();
 
         buttonPanel = root.Q<VisualElement>("ButtonPanel");
+        etcPanel = root.Q<VisualElement>("EtcVE");
 
         // 이벤트 등록
-        RegisterButtonEvents(buttonPanel);
+        //RegisterButtonEvents(buttonPanel);
 
-        root.Q<Button>("Create").clicked += ()=> { ButtonCreate(buttonPanel); };
+        CreateButtonsForAnimationClips(etcPanel);
 
         return root;
     }
 
-    private void RegisterButtonEvents(VisualElement _panel)
+    private void CreateButtonsForAnimationClips(VisualElement _panel)
     {
         if (_panel != null)
         {
-            var buttons = FindButtons(_panel);
-            foreach (var button in buttons)
+            List<AnimationClip> clips = _animCtr.GetAllAnimationClips();
+            foreach (var clip in clips)
             {
-                button.clicked += () => { PlayAnimation(button.text); };
+                Button btn = new Button();
+                btn.style.width = 100;
+                btn.style.height = 50;
+                btn.text = clip.name;
+                btn.style.fontSize = 18;
+                btn.style.unityFontStyleAndWeight = FontStyle.Bold;
+                btn.clicked += () => { PlayAnimation(clip.name); };
+                _panel.Add(btn);
             }
         }
     }
-
-    private List<Button> FindButtons(VisualElement _panel)
-    {
-        List<Button> buttons = new List<Button>();
-
-        foreach (var child in _panel.Children())
-        {
-            if (child is Button button)
-            {
-                buttons.Add(button);
-            }
-
-            buttons.AddRange(FindButtons(child));
-        }
-
-        return buttons;
-    }
-
-    private void ButtonCreate(VisualElement _panel)
-    {
-        if (_panel != null)
-        {
-            foreach (var child in _panel.Children())
-            {
-                if(child is VisualElement ve)
-                {
-                    if(ve.name == _animCtr.animType.ToString())
-                    {
-                        ve.Add(ButtonInit());
-                    }
-                }
-            }
-        }
-    }
-
-    private Button ButtonInit()
-    {
-        Button btn = new Button();
-        btn.style.width = 100;
-        btn.style.height = 50;
-        btn.text = _animCtr.actionName;
-        btn.style.fontSize = 18;
-        btn.style.unityFontStyleAndWeight = FontStyle.Bold;
-
-        btn.clicked += () => { PlayAnimation( _animCtr.actionName); };
-        return btn;
-    }
+    
 
     private void PlayAnimation(string animationName)
     {

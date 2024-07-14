@@ -22,23 +22,11 @@ public class AnimationCtr : MonoBehaviour
     public void Init()
     {
         _anim = GetComponentInChildren<Animator>();
-        Debug.Log(_anim);
+
         if (_anim == null)
         {
             Debug.LogError("Animator component not found!");
         }
-    }
-
-    public void AnimCross(string _name, float _soft)
-    {
-        if (_anim == null)
-        {
-            Debug.LogError("Animator not initialized!");
-            return;
-        }
-
-        int animHash = Animator.StringToHash(_name);
-        _anim.CrossFade(animHash, _soft);
     }
 
     public AnimationClip GetAnimationClip(string name)
@@ -51,5 +39,10 @@ public class AnimationCtr : MonoBehaviour
             }
         }
         return null;
+    }
+
+    public List<AnimationClip> GetAllAnimationClips()
+    {
+        return new List<AnimationClip>(_anim.runtimeAnimatorController.animationClips);
     }
 }
