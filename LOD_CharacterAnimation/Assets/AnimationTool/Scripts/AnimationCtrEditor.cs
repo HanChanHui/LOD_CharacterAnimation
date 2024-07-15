@@ -29,15 +29,24 @@ public class AnimationCtrEditor : Editor
 
         _animCtr.Init();
 
-        buttonPanel = root.Q<VisualElement>("ButtonPanel");
         etcPanel = root.Q<VisualElement>("EtcVE");
 
-        // 이벤트 등록
-        //RegisterButtonEvents(buttonPanel);
+        if(_animCtr.anim != null)
+        {
+            CreateButtonsForAnimationClips(etcPanel);
+        }
 
-        CreateButtonsForAnimationClips(etcPanel);
+        root.Q<Button>("apply").clicked += ()=> { ResetButton(etcPanel); };
 
         return root;
+    }
+
+    private void ResetButton(VisualElement _panel)
+    {
+        _animCtr.RemoveFirstChild();
+        RemoveAllButtons(_panel);
+        _animCtr.Init();
+        CreateButtonsForAnimationClips(_panel);
     }
 
     private void CreateButtonsForAnimationClips(VisualElement _panel)
@@ -58,7 +67,14 @@ public class AnimationCtrEditor : Editor
             }
         }
     }
-    
+
+    private void RemoveAllButtons(VisualElement _panel)
+    {
+        if (_panel != null)
+        {
+            _panel.Clear();
+        }
+    }
 
     private void PlayAnimation(string animationName)
     {
@@ -67,7 +83,6 @@ public class AnimationCtrEditor : Editor
         if (clip != null)
         {
             PlayAnimationClip(clip);
-            Debug.Log(clip);
         }
         else
         {
@@ -78,14 +93,14 @@ public class AnimationCtrEditor : Editor
     private void PlayAnimationClip(AnimationClip clip)
     {
         AnimationMode.StartAnimationMode();
-        AnimationMode.SampleAnimationClip(_animCtr._anim.gameObject, clip, 0f);
+        AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, clip, 0f);
 
         EditorApplication.update += () =>
         {
             if (AnimationMode.InAnimationMode())
             {
                 float time = (float)EditorApplication.timeSinceStartup % clip.length;
-                AnimationMode.SampleAnimationClip(_animCtr._anim.gameObject, clip, time);
+                AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, clip, time);
             }
         };
     }

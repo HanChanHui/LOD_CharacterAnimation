@@ -15,23 +15,42 @@ public class AnimationCtr : MonoBehaviour
 
     public AnimType animType;
     public string actionName;
-    public float animSoft;
 
-    public Animator _anim;
+    public Animator anim;
+    public GameObject modelPrefab;
+    public RuntimeAnimatorController controller;
 
     public void Init()
     {
-        _anim = GetComponentInChildren<Animator>();
-
-        if (_anim == null)
+        if (transform.childCount > 0)
         {
-            Debug.LogError("Animator component not found!");
+            anim = GetComponentInChildren<Animator>();
+            if (anim == null || anim.runtimeAnimatorController == null)
+            {
+                anim.runtimeAnimatorController = controller;
+                Debug.Log($"RuntimeAnimatorController Applay {controller}");
+            }
+        }
+        else if (modelPrefab != null && controller != null)
+        {
+            GameObject model = Instantiate(modelPrefab, transform);
+
+            model.AddComponent<Animator>();
+            anim = model.GetComponent<Animator>();
+            Debug.Log($"Animator added to {model.name}");
+
+            anim.runtimeAnimatorController = controller;
+            Debug.Log($"RuntimeAnimatorController assigned to {model.name}");
+        }
+        else
+        {
+            Debug.Log($"No Animator");
         }
     }
 
     public AnimationClip GetAnimationClip(string name)
     {
-        foreach (var clip in _anim.runtimeAnimatorController.animationClips)
+        foreach (var clip in anim.runtimeAnimatorController.animationClips)
         {
             if (clip.name == name)
             {
@@ -43,6 +62,15 @@ public class AnimationCtr : MonoBehaviour
 
     public List<AnimationClip> GetAllAnimationClips()
     {
-        return new List<AnimationClip>(_anim.runtimeAnimatorController.animationClips);
+        return new List<AnimationClip>(anim.runtimeAnimatorController.animationClips);
+    }
+
+    public void RemoveFirstChild()
+    {
+        if (transform.childCount > 0)
+        {
+            Transform firstChild = transform.GetChild(0);
+            DestroyImmediate(firstChild.gameObject);
+        }
     }
 }
