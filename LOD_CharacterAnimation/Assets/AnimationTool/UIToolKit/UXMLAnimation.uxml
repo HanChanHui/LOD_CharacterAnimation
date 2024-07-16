@@ -3,13 +3,23 @@
     <ui:VisualElement name="Panel1" style="flex-grow: 0; height: auto; margin-bottom: 15px; margin-top: 0;">
         <ui:Label tabindex="-1" text="Animation" parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-font-style: bold; font-size: 20px; -unity-text-align: middle-left;" />
     </ui:VisualElement>
-    <ui:VisualElement name="Panel3" style="flex-grow: 0;">
+    <ui:VisualElement name="ModelingPanel" style="flex-grow: 0;">
         <ui:VisualElement name="Create" class="--unity-colors-default-background" style="background-color: rgb(113, 113, 113); border-top-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-bottom-left-radius: 2px; border-top-width: 7px; border-right-width: 5px; border-bottom-width: 7px; border-left-width: 5px; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; margin-top: 2px; margin-right: 5px; margin-bottom: 2px; margin-left: 5px; flex-direction: column; flex-wrap: wrap;">
             <ui:Label tabindex="-1" text="Modeling" parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-font-style: bold; color: rgb(255, 255, 255); font-size: 16px;" />
             <ui:VisualElement style="flex-grow: 1; flex-direction: column;">
                 <uie:ObjectField label="Model" name="modelField" binding-path="modelPrefab" />
                 <uie:ObjectField label="Animator Controller" type="UnityEngine.RuntimeAnimatorController, UnityEngine.AnimationModule" name="animatorField" binding-path="controller" />
                 <ui:Button text="Apply" parse-escape-sequences="true" display-tooltip-when-elided="true" name="apply" style="-unity-text-align: middle-center; flex-shrink: 1; width: 70px; flex-direction: column; height: 40px; align-self: flex-end; margin-top: 5px; margin-bottom: 5px; font-size: 14px; -unity-font-style: bold;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="AnimationClipPanel" style="flex-grow: 0;">
+        <ui:VisualElement name="Create" class="--unity-colors-default-background" style="background-color: rgb(113, 113, 113); border-top-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-bottom-left-radius: 2px; border-top-width: 7px; border-right-width: 5px; border-bottom-width: 7px; border-left-width: 5px; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; margin-top: 2px; margin-right: 5px; margin-bottom: 2px; margin-left: 5px; flex-direction: column; flex-wrap: wrap;">
+            <ui:Label tabindex="-1" text="AnimationClip" parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-font-style: bold; color: rgb(255, 255, 255); font-size: 16px;" />
+            <ui:VisualElement style="flex-grow: 1; flex-direction: column;">
+                <uie:ObjectField label="Object Field" type="UnityEngine.AnimationClip, UnityEngine.AnimationModule" name="animationField" binding-path="animationClip" />
+                <ui:VisualElement name="clipPanel" style="flex-grow: 1;" />
+                <ui:VisualElement name="eventPanel" style="flex-grow: 1;" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

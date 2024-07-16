@@ -5,17 +5,6 @@ using UnityEngine;
 
 public class AnimationCtr : MonoBehaviour
 {
-    public enum AnimType
-    {
-        Walking,
-        Attack,
-        Death,
-        Etc,
-    }
-
-    public AnimType animType;
-    public string actionName;
-
     public Animator anim;
     public GameObject modelPrefab;
     public RuntimeAnimatorController controller;
@@ -72,5 +61,11 @@ public class AnimationCtr : MonoBehaviour
             Transform firstChild = transform.GetChild(0);
             DestroyImmediate(firstChild.gameObject);
         }
+    }
+
+    // 애니메이션 이벤트가 호출할 함수
+    public void OnAnimationEvent()
+    {
+        Debug.Log("Animation Event Triggered");
     }
 }
