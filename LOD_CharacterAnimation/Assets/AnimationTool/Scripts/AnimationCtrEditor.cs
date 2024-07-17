@@ -1,5 +1,5 @@
-using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -13,15 +13,24 @@ public class AnimationCtrEditor : Editor
     public VisualElement etcPanel;
 
     private ObjectField clipField;
+    private ObjectField objectField;
+    private DropdownField functionDropdown;
     private Slider frameSlider;
     private Button startClipBtn;
     private Button stopClipBtn;
+    private Button addEventBtn;
+    private Button deleteEventBtn;
+    private ListView eventListView;
 
     private AnimationClip animationClip;
-    public AnimationClip AnimationClip { get => animationClip; set { animationClip = value; clipField.value = value; } }
+    public AnimationClip AnimationClip { 
+        get => animationClip; 
+        set { animationClip = value; clipField.value = value; UpdateEventList(); } 
+    }
     private bool isPlaying = false;
     private float startTime = 0;
     private float currentTime = 0;
+    private float lastEventTime = -1f;
 
     public override VisualElement CreateInspectorGUI()
     {
@@ -38,15 +47,6 @@ public class AnimationCtrEditor : Editor
 
         etcPanel = root.Q<VisualElement>("EtcVE");
 
-        //=============================================
-
-        clipField = root.Q<ObjectField>("animationField");
-        frameSlider = root.Q<Slider>("frameSlider");
-        startClipBtn = root.Q<Button>("startBtn");
-        stopClipBtn = root.Q<Button>("stopBtn");
-
-        //=============================================
-
         if(_animCtr.anim != null)
         {
             CreateButtonsForAnimationClips(etcPanel);
@@ -54,9 +54,44 @@ public class AnimationCtrEditor : Editor
 
         root.Q<Button>("apply").clicked += ()=> { ResetButton(etcPanel); };
 
+        //=============================================
+
+        clipField = root.Q<ObjectField>("animationField");
+        frameSlider = root.Q<Slider>("frameSlider");
+        startClipBtn = root.Q<Button>("startBtn");
+        stopClipBtn = root.Q<Button>("stopBtn");
+        addEventBtn = root.Q<Button>("addEventBtn");
+        deleteEventBtn = root.Q<Button>("deleteEventBtn");
+
+        objectField = root.Q<ObjectField>("objectField");
+        objectField.objectType = typeof(GameObject);
+        objectField.RegisterValueChangedCallback(evt =>
+        {
+            if (evt.newValue != null)
+            {
+                UpdateFunctionList(evt.newValue as GameObject);
+            }
+        });
+
+        functionDropdown = root.Q<DropdownField>("functionDropdown");
+
+        eventListView = root.Q<ListView>("eventList");
+        eventListView.makeItem = () => new Label();
+        eventListView.bindItem = (element, i) =>
+        {
+            Label label = (Label)element;
+            AnimationEvent evt = (AnimationEvent)eventListView.itemsSource[i];
+            label.text = $"{evt.time}: {evt.functionName}";
+
+            deleteEventBtn.clicked += () => { RemoveAnimationEvent(i);};
+        };
+        eventListView.selectionType = SelectionType.Single;
+        //=============================================
+
         return root;
     }
 
+    #region AnimationButton
     private void ResetButton(VisualElement _panel)
     {
         _animCtr.RemoveFirstChild();
@@ -91,11 +126,11 @@ public class AnimationCtrEditor : Editor
             }
         }
     }
+    #endregion
 
     private void ShowClipDetails(AnimationClip clip)
     {
         AnimationClip = _animCtr.GetAnimationClip(clip.name);
-
         frameSlider.lowValue = 0;
         frameSlider.highValue = clip.length * clip.frameRate;
         frameSlider.RegisterValueChangedCallback( evt => 
@@ -114,70 +149,178 @@ public class AnimationCtrEditor : Editor
 
         startClipBtn.clicked += () => { PlayAnimation(); };
         stopClipBtn.clicked += () => { StopAnimation(); };
-        //startClipBtn.clicked += () => { AddAnimationEvent(clip, frameSlider.value); };
+        addEventBtn.clicked += () => { AddAnimationEvent(clip, currentTime); };
     }
 
-    private void PlayAnimation()
-    {
 
-        if (animationClip != null)
+   #region AnimationClip
+     private void PlayAnimation()
+     {
+ 
+         if (animationClip != null)
+         {
+             PlayAnimationClip(animationClip);
+         }
+         else
+         {
+             Debug.LogError("Animation clip not found: " + animationClip.name);
+         }
+     }
+ 
+     private void PlayAnimationClip(AnimationClip clip)
+     {
+         AnimationMode.StartAnimationMode();
+         AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, clip, 0f);
+         isPlaying = true;
+         startTime = (float)EditorApplication.timeSinceStartup - currentTime;
+         lastEventTime = -1f;
+         EditorApplication.update += UpdateAnimation;
+     }
+ 
+     private void StopAnimation()
+     {
+         if (isPlaying)
+         {
+             isPlaying = false;
+             EditorApplication.update -= UpdateAnimation;
+             currentTime = (float)(EditorApplication.timeSinceStartup - startTime) % animationClip.length;
+         }
+     }
+ 
+     void UpdateAnimation()
+     {
+         if (AnimationMode.InAnimationMode() && isPlaying)
+         {
+             float previousTime = currentTime;
+             currentTime = (float)(EditorApplication.timeSinceStartup - startTime) % animationClip.length;
+ 
+             // 애니메이션이 한 바퀴를 돌았는지 확인
+             if (currentTime < previousTime)
+             {
+                 lastEventTime = -1f; // 애니메이션이 한 바퀴를 돌면 lastEventTime 초기화
+             }
+ 
+             frameSlider.value = currentTime * animationClip.frameRate;
+             AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, animationClip, currentTime);
+ 
+             CheckAnimationEvents(currentTime);
+         }
+     }
+   #endregion
+
+    #region CallAnimationClipEvent
+        private void CheckAnimationEvents(float time)
         {
-            PlayAnimationClip(animationClip);
+            foreach (var animEvent in AnimationUtility.GetAnimationEvents(animationClip))
+            {
+                if (Mathf.Abs(animEvent.time - time) < 0.02f  && Mathf.Abs(animEvent.time - lastEventTime) > 0.02f) // 0.02f 는 시간 오차를 고려한 값입니다.
+                {
+                    CallAnimationEventFunction(animEvent.functionName);
+                    lastEventTime = animEvent.time;
+                }
+            }
         }
-        else
+    
+        private void CallAnimationEventFunction(string functionName)
         {
-            Debug.LogError("Animation clip not found: " + animationClip.name);
+            var components = _animCtr.anim.GetComponents<MonoBehaviour>();
+            foreach (var component in components)
+            {
+                var method = component.GetType().GetMethod(functionName);
+                if (method != null)
+                {
+                    method.Invoke(component, null);
+                    return;
+                }
+            }
+            Debug.LogWarning($"No method named {functionName} found on any components of {_animCtr.anim.gameObject.name}");
         }
-    }
-
-    private void PlayAnimationClip(AnimationClip clip)
-    {
-        AnimationMode.StartAnimationMode();
-        AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, clip, 0f);
-        isPlaying = true;
-        startTime = (float)EditorApplication.timeSinceStartup - currentTime;
-        EditorApplication.update += UpdateAnimation;
-    }
-
-    private void StopAnimation()
-    {
-        if (isPlaying)
+    
+        private void AddAnimationEvent(AnimationClip clip, float _frame)
         {
-            isPlaying = false;
-            EditorApplication.update -= UpdateAnimation;
-            currentTime = (float)(EditorApplication.timeSinceStartup - startTime) % animationClip.length;
+             if (clip != null && !string.IsNullOrEmpty(functionDropdown.value))
+            {
+                AnimationEvent animationEvent = new AnimationEvent
+                {
+                    time = _frame,
+                    functionName = functionDropdown.value,
+                };
+                Debug.Log(animationEvent.functionName);
+                List<AnimationEvent> events = new List<AnimationEvent>(AnimationUtility.GetAnimationEvents(clip));
+    
+                // Check for duplicates
+                bool eventExists = events.Exists(evt => evt.time == animationEvent.time && evt.functionName == animationEvent.functionName);
+                if (!eventExists)
+                {
+                    events.Add(animationEvent);
+                    AnimationUtility.SetAnimationEvents(clip, events.ToArray());
+                    Debug.Log("Event added to clip: " + clip.name);
+                    UpdateEventList();
+                }
+                else
+                {
+                    Debug.LogWarning("Event already exists at this time with the same function name.");
+                }
+            }
+            else
+            {
+                Debug.LogError("No animation clip selected or function name is empty.");
+            }
         }
-    }
+    #endregion
 
-    void UpdateAnimation()
-    {
-        if (AnimationMode.InAnimationMode() && isPlaying)
+    #region Event Add / Delete
+        private void UpdateEventList()
         {
-            currentTime = (float)(EditorApplication.timeSinceStartup - startTime) % animationClip.length;
-            frameSlider.value = currentTime * animationClip.frameRate;
-            AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, animationClip, currentTime);
+            if (animationClip != null)
+            {
+                List<AnimationEvent> events = new List<AnimationEvent>(AnimationUtility.GetAnimationEvents(animationClip));
+                eventListView.itemsSource = events;
+                eventListView.Rebuild();
+            }
         }
-    }
-
-    private void AddAnimationEvent(AnimationClip clip, float frame)
-    {
-        animationClip = clip;
-        AnimationEvent animationEvent = new AnimationEvent
+    
+        private void RemoveAnimationEvent(int index)
         {
-            time = frame / clip.frameRate,
-            functionName = "OnAnimationEvent" // 이벤트가 호출할 함수 이름
-        };
-
-        List<AnimationEvent> events = new List<AnimationEvent>(AnimationUtility.GetAnimationEvents(clip))
+            if (animationClip != null)
+            {
+                List<AnimationEvent> events = new List<AnimationEvent>(AnimationUtility.GetAnimationEvents(animationClip));
+                if (eventListView.selectedIndex >= 0 && eventListView.selectedIndex < events.Count)
+                {
+                    events.RemoveAt(eventListView.selectedIndex);
+                    AnimationUtility.SetAnimationEvents(animationClip, events.ToArray());
+                    UpdateEventList();
+                }
+            }
+        }
+    
+        private void UpdateFunctionList(GameObject selectedObject)
         {
-            animationEvent
-        };
-
-        AnimationUtility.SetAnimationEvents(clip, events.ToArray());
-
-        Debug.Log($"Added event at {frame / clip.frameRate} seconds to {clip.name}");
-    }
-
+            List<string> functionNames = new List<string>();
+    
+            if (selectedObject != null)
+            {
+                var components = selectedObject.GetComponents<MonoBehaviour>();
+                foreach (var component in components)
+                {
+                    var methods = component.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+                    foreach (var method in methods)
+                    {
+                        if (method.ReturnType == typeof(void) && method.GetParameters().Length == 0)
+                        {
+                            functionNames.Add(method.Name);
+                        }
+                    }
+                }
+            }
+    
+            functionDropdown.choices = functionNames;
+            if (functionNames.Count > 0)
+            {
+                functionDropdown.value = functionNames[0];
+            }
+        }
+    #endregion
 
     private void OnDisable()
     {
