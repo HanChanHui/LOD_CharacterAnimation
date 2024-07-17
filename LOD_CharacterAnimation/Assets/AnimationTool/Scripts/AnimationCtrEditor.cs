@@ -12,12 +12,16 @@ public class AnimationCtrEditor : Editor
     private AnimationCtr _animCtr;
     public VisualElement etcPanel;
 
-    public AnimationClip animationClip;
-    private VisualElement clipPanel;
-    private VisualElement eventPanel;
-     private Slider frameSlider;
-    private Button addEventButton;
+    private ObjectField clipField;
+    private Slider frameSlider;
+    private Button startClipBtn;
+    private Button stopClipBtn;
 
+    private AnimationClip animationClip;
+    public AnimationClip AnimationClip { get => animationClip; set { animationClip = value; clipField.value = value; } }
+    private bool isPlaying = false;
+    private float startTime = 0;
+    private float currentTime = 0;
 
     public override VisualElement CreateInspectorGUI()
     {
@@ -36,8 +40,10 @@ public class AnimationCtrEditor : Editor
 
         //=============================================
 
-        clipPanel = root.Q<VisualElement>("clipPanel");
-        eventPanel = root.Q<VisualElement>("eventPanel");
+        clipField = root.Q<ObjectField>("animationField");
+        frameSlider = root.Q<Slider>("frameSlider");
+        startClipBtn = root.Q<Button>("startBtn");
+        stopClipBtn = root.Q<Button>("stopBtn");
 
         //=============================================
 
@@ -59,6 +65,14 @@ public class AnimationCtrEditor : Editor
         CreateButtonsForAnimationClips(_panel);
     }
 
+    private void RemoveAllButtons(VisualElement _panel)
+    {
+        if (_panel != null)
+        {
+            _panel.Clear();
+        }
+    }
+
     private void CreateButtonsForAnimationClips(VisualElement _panel)
     {
         if (_panel != null)
@@ -72,7 +86,6 @@ public class AnimationCtrEditor : Editor
                 btn.text = clip.name;
                 btn.style.fontSize = 18;
                 btn.style.unityFontStyleAndWeight = FontStyle.Bold;
-                //btn.clicked += () => { PlayAnimation(clip.name); };
                 btn.clicked += () => { ShowClipDetails(clip); };
                 _panel.Add(btn);
             }
@@ -81,23 +94,74 @@ public class AnimationCtrEditor : Editor
 
     private void ShowClipDetails(AnimationClip clip)
     {
-        eventPanel.Clear();
-        animationClip = clip;
-        frameSlider = new Slider(0, clip.length * clip.frameRate)
-        {
-            label = "Frame",
-            showInputField = true
-        };
-        eventPanel.Add(frameSlider);
+        AnimationClip = _animCtr.GetAnimationClip(clip.name);
 
-        addEventButton = new Button { text = "Add Event" };
-        addEventButton.clicked += () => { AddAnimationEvent(clip, frameSlider.value); };
-        addEventButton.clicked += () => { PlayAnimation(clip.name, frameSlider.value); };
-        eventPanel.Add(addEventButton);
+        frameSlider.lowValue = 0;
+        frameSlider.highValue = clip.length * clip.frameRate;
+        frameSlider.RegisterValueChangedCallback( evt => 
+        {
+            if(animationClip != null)
+            {
+                currentTime = evt.newValue / animationClip.frameRate;
+                AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, animationClip, currentTime);
+
+                if (!isPlaying)
+                {
+                    startTime = (float)EditorApplication.timeSinceStartup - currentTime;
+                }
+            }
+        });
+
+        startClipBtn.clicked += () => { PlayAnimation(); };
+        stopClipBtn.clicked += () => { StopAnimation(); };
+        //startClipBtn.clicked += () => { AddAnimationEvent(clip, frameSlider.value); };
+    }
+
+    private void PlayAnimation()
+    {
+
+        if (animationClip != null)
+        {
+            PlayAnimationClip(animationClip);
+        }
+        else
+        {
+            Debug.LogError("Animation clip not found: " + animationClip.name);
+        }
+    }
+
+    private void PlayAnimationClip(AnimationClip clip)
+    {
+        AnimationMode.StartAnimationMode();
+        AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, clip, 0f);
+        isPlaying = true;
+        startTime = (float)EditorApplication.timeSinceStartup - currentTime;
+        EditorApplication.update += UpdateAnimation;
+    }
+
+    private void StopAnimation()
+    {
+        if (isPlaying)
+        {
+            isPlaying = false;
+            EditorApplication.update -= UpdateAnimation;
+            currentTime = (float)(EditorApplication.timeSinceStartup - startTime) % animationClip.length;
+        }
+    }
+
+    void UpdateAnimation()
+    {
+        if (AnimationMode.InAnimationMode() && isPlaying)
+        {
+            currentTime = (float)(EditorApplication.timeSinceStartup - startTime) % animationClip.length;
+            frameSlider.value = currentTime * animationClip.frameRate;
+            AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, animationClip, currentTime);
+        }
     }
 
     private void AddAnimationEvent(AnimationClip clip, float frame)
     {
+        animationClip = clip;
         AnimationEvent animationEvent = new AnimationEvent
         {
             time = frame / clip.frameRate,
@@ -114,42 +178,6 @@ public class AnimationCtrEditor : Editor
         Debug.Log($"Added event at {frame / clip.frameRate} seconds to {clip.name}");
     }
 
-    private void RemoveAllButtons(VisualElement _panel)
-    {
-        if (_panel != null)
-        {
-            _panel.Clear();
-        }
-    }
-
-    private void PlayAnimation(string animationName, float _frame)
-    {
-        AnimationClip clip = _animCtr.GetAnimationClip(animationName);
-
-        if (clip != null)
-        {
-            PlayAnimationClip(clip, _frame);
-        }
-        else
-        {
-            Debug.LogError("Animation clip not found: " + animationName);
-        }
-    }
-
-    private void PlayAnimationClip(AnimationClip clip, float _frame)
-    {
-        AnimationMode.StartAnimationMode();
-        AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, clip, 0f);
-
-        EditorApplication.update += () =>
-        {
-            if (AnimationMode.InAnimationMode())
-            {
-                float time = (float)EditorApplication.timeSinceStartup % clip.length;
-                AnimationMode.SampleAnimationClip(_animCtr.anim.gameObject, clip, _frame);
-            }
-        };
-    }
 
     private void OnDisable()
     {
